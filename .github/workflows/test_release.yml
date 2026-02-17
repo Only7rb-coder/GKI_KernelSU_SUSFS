@@ -57,11 +57,6 @@ on:
         required: true
         type: boolean
         default: true
-      BBG:
-        description: "是否启用内核层面阻止对关键分区/设备节点的非法写入(LSM)？"
-        required: true
-        type: boolean
-        default: false
       get_manager:
         description: 'Get the latest KSU Manager at the same time?'
         required: true
@@ -87,7 +82,6 @@ jobs:
       version: ${{ inputs.version }}
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
-      BBG: ${{ inputs.BBG }}
 
   build-kernel-a13-5-10:
     if: contains(github.event.inputs.kernels_to_build, 'all') || contains(github.event.inputs.kernels_to_build, 'a13-5.10')
@@ -100,7 +94,6 @@ jobs:
       version: ${{ inputs.version }}
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
-      BBG: ${{ inputs.BBG }}
 
   build-kernel-a13-5-15:
     if: contains(github.event.inputs.kernels_to_build, 'all') || contains(github.event.inputs.kernels_to_build, 'a13-5.15')
@@ -113,7 +106,6 @@ jobs:
       version: ${{ inputs.version }}
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
-      BBG: ${{ inputs.BBG }}
 
   build-kernel-a14-5-15:
     if: contains(github.event.inputs.kernels_to_build, 'all') || contains(github.event.inputs.kernels_to_build, 'a14-5.15')
@@ -126,7 +118,6 @@ jobs:
       version: ${{ inputs.version }}
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
-      BBG: ${{ inputs.BBG }}
 
   build-kernel-a14-6-1:
     if: contains(github.event.inputs.kernels_to_build, 'all') || contains(github.event.inputs.kernels_to_build, 'a14-6.1')
@@ -139,7 +130,6 @@ jobs:
       version: ${{ inputs.version }}
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
-      BBG: ${{ inputs.BBG }}
 
   build-kernel-a15-6-6:
     if: contains(github.event.inputs.kernels_to_build, 'all') || contains(github.event.inputs.kernels_to_build, 'a15-6.6')
@@ -152,7 +142,6 @@ jobs:
       version: ${{ inputs.version }}
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
-      BBG: ${{ inputs.BBG }}
 
   check-build-status:
     runs-on: ubuntu-latest
@@ -246,31 +235,28 @@ jobs:
       - get_manager
     if: always()
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO_OWNER: ShirkNeko
+      REPO_NAME: GKI_KernelSU_SUSFS
+      GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
       RELEASE_NAME: "GKI Kernel: ${{ inputs.kernelsu_variant == 'Next' && 'KernelSU-' || '' }} ${{ inputs.kernelsu_variant }}"
       INITIAL_RELEASE_NOTES: |
-        This release includes **${{ inputs.kernelsu_variant == 'Next' && 'KernelSU' || '' }}${{ inputs.kernelsu_variant }}**
-        
+        This release includes **${{ inputs.kernelsu_variant == 'Next' && 'KernelSU' || '' }}${{ inputs.kernelsu_variant }}, please note the KSU version here**, SUSFS v1.5.8, LZ4KD
         Features:
         -> ${{ inputs.kernelsu_variant == 'Next' && 'KernelSU-' || '' }}${{ inputs.kernelsu_variant }}-${{ inputs.kernelsu_branch }}
-        -> SUSFS ඞ v2.0.0
+        -> SUSFS ඞ v1.5.8
         -> Manual Syscall Hooks for better hiding
         -> Magic Mount Support
         -> Simple hiding for LineageOS detection
         -> Futile hiding for jit-zygote-cache detection
         -> Wireguard Support
         -> BBR Support
-        ${{ inputs.BBG && '-> BBG Support' || '' }}
-        -> BBG ${{ inputs.BBG && 'supported' || 'not supported' }}
         ${{ inputs.use_kpm && '-> KPM Support' || '' }}
         -> **LZ4KD&ONEPLUS_LZ4K** ${{ inputs.use_zram && 'supported' || 'not supported' }}
         
         <details>
         <summary>Notes:</summary>
-        
         - -> In SUS SU Mode 2, it will show as disabled or incompatible, the reason is that non-kprobe hooks were used (when compiling the kernel), and non-kprobe hooks are no longer needed!
-        - -> In the latest version of susfs, flashing AK3 compressed package with Kernel Flasher will brick your device, try [Horizon Kernel Flasher](https://github.com/libxzr/HorizonKernelFlasher)!
-        
+        - -> In the latest version of susfs, flashing AK3 compressed package with Kernel Flasher will brick your device, try [Horizon Kernel Flasher]\(https://github.com/libxzr/HorizonKernelFlasher)!
         </details>
         
         Modules:
@@ -296,14 +282,14 @@ jobs:
       - name: Generate and Create New Tag (Atomic)
         if: ${{ steps.release_check.outcome == 'success' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
         run: |
           set -e
 
-          BASE_VERSION="v2.0.0"
+          BASE_VERSION="v1.5.8"
           
           # Fetch all existing tags using git ls-remote
-          EXISTING_TAGS=$(git ls-remote --tags https://github.com/${{ github.repository }}.git | awk '{print $2}' | sed 's/refs\/tags\///' || true)
+          EXISTING_TAGS=$(git ls-remote --tags https://github.com/$REPO_OWNER/$REPO_NAME.git | awk '{print $2}' | sed 's/refs\/tags\///' || true)
 
           # Find highest revision number for this base version
           MAX_REVISION=0
@@ -352,22 +338,22 @@ jobs:
             echo "Next version: $KSU_VERSION"
             cd ..
             rm -rf ksu-next-tmp
-            echo "RELEASE_NAME=\"GKI Kernel: KernelSU-Next ($KSU_VERSION) & SUSFS v2.0.0\"" >> $GITHUB_ENV
+            echo "RELEASE_NAME=\"GKI Kernel: KernelSU-Next ($KSU_VERSION) & SUSFS v1.5.8\"" >> $GITHUB_ENV
             
           elif [ "${{ inputs.kernelsu_variant }}" = "SukiSU" ]; then
             echo "Processing SukiSU variant"
             git clone https://github.com/SukiSU-Ultra/SukiSU-Ultra.git suki-tmp
             cd suki-tmp
             KSU_GIT_VERSION=$(git rev-list --count HEAD)
-            KSU_VERSION=$((4 * 10000 + KSU_GIT_VERSION - 2815))
+            KSU_VERSION=$((10000 + KSU_GIT_VERSION + 700))
             echo "SukiSU version: $KSU_VERSION"
             cd ..
             rm -rf suki-tmp
-            echo "RELEASE_NAME=\"GKI Kernel: SukiSU ($KSU_VERSION) & SUSFS v2.0.0\"" >> $GITHUB_ENV
+            echo "RELEASE_NAME=\"GKI Kernel: SukiSU ($KSU_VERSION) & SUSFS v1.5.8\"" >> $GITHUB_ENV
             
           else
             echo "Using default naming for variant: ${{ inputs.kernelsu_variant }}"
-            echo "RELEASE_NAME=\"GKI Kernel: ${{ inputs.kernelsu_variant }} & SUSFS v2.0.0\"" >> $GITHUB_ENV
+            echo "RELEASE_NAME=\"GKI Kernel: ${{ inputs.kernelsu_variant }} & SUSFS v1.5.8\"" >> $GITHUB_ENV
           fi
           
       - name: Fetch KSU and SUSFS Commit Info
@@ -397,7 +383,7 @@ jobs:
             elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
               KSU_REPO_URL="https://github.com/KernelSU-Next/KernelSU-Next.git"
             elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-              KSU_REPO_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra.git"
+              KSU_REPO_URL="https://github.com/ShirkNeko/KernelSU.git"
             fi
             
             if [ -n "$KSU_REPO_URL" ]; then
@@ -422,8 +408,8 @@ jobs:
             KSU_REPO_URL="https://github.com/5ec1cff/KernelSU.git"
             KSU_REPO_URL2="5ec1cff/KernelSU"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            KSU_REPO_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra.git"
-            KSU_REPO_URL2="SukiSU-Ultra/SukiSU-Ultra"
+            KSU_REPO_URL="https://github.com/ShirkNeko/KernelSU.git"
+            KSU_REPO_URL2="ShirkNeko/KernelSU"
           else
             echo "Warning: Unknown KernelSU variant selected. Defaulting to Official for URL generation."
             KSU_REPO_URL="https://github.com/tiann/KernelSU.git"
@@ -453,7 +439,7 @@ jobs:
           elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
             FINAL_RELEASE_NOTES+="\nMKSU Manager:\n-> https://github.com/5ec1cff/KernelSU"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            FINAL_RELEASE_NOTES+="\nSukiSU Manager:\n-> https://github.com/SukiSU-Ultra/SukiSU-Ultra"
+            FINAL_RELEASE_NOTES+="\nSukiSU Manager:\n-> https://github.com/ShirkNeko/SukiSU-Ultra"
           fi
           
           FINAL_RELEASE_NOTES+="\n\nLTO: thin"
@@ -505,10 +491,8 @@ jobs:
                   ;;
               esac
             done
+            KERNELS_TO_FETCH_SUSFS=( $(printf "%s\n" "${KERNELS_TO_FETCH_SUSFS[@]}" | sort -u) )
           fi
-
-          mapfile -t SORTED_KERNELS < <(printf '%s\n' "${KERNELS_TO_FETCH_SUSFS[@]}" | sort)
-          KERNELS_TO_FETCH_SUSFS=("${SORTED_KERNELS[@]}")
           
           for kernel_id in "${KERNELS_TO_FETCH_SUSFS[@]}"; do
             susfs_branch_name="${BRANCH_MAP[$kernel_id]}"
@@ -559,12 +543,12 @@ jobs:
           prerelease: true
           release_name: ${{ env.RELEASE_NAME }}
           body: ${{ env.FULL_RELEASE_NOTES }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.MY_GITHUB_TOKEN }}
           
       - name: Upload Release Assets
         if: ${{ steps.release_check.outcome == 'success' }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
         run: |
           echo "Uploading release assets..."
           
